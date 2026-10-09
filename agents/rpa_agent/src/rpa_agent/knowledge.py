@@ -6,14 +6,14 @@ atomic and hold a file lock.
 
 from __future__ import annotations
 
-import os
 import re
-import tempfile
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from filelock import FileLock
+
+from agent_core.files import atomic_write, lock_for
 
 VIEWS_HEADER = "# Views\n<!-- managed by rpa_agent; one line per view; keep descriptions short -->\n"
 PARAM_FIELDS = ["description", "kind", "date_format", "format", "pattern", "valid_examples", "invalid_examples"]
@@ -71,19 +71,6 @@ def _parse_param(name: str, text: str) -> ParamKnowledge:
     return pk
 
 
-def _atomic_write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp_", suffix=path.suffix)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(content)
-        os.replace(tmp, path)
-    except BaseException:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
-
-
 class KnowledgeBase:
     def __init__(self, root: str | Path):
         self.root = Path(root)
@@ -99,8 +86,7 @@ class KnowledgeBase:
 
     # -- locking / caching ----------------------------------------------------
     def lock(self, path: Path) -> FileLock:
-        rel = path.relative_to(self.root).as_posix().replace("/", "__")
-        return FileLock(str(self.lock_dir / f"{rel}.lock"), timeout=30)
+        return lock_for(path, self.root, self.lock_dir)
 
     def _read_cached(self, path: Path, parse):
         try:
@@ -131,7 +117,7 @@ class KnowledgeBase:
 
     def _write_views(self, views: dict[str, str]) -> None:
         body = "".join(f"- {k}: {v}".rstrip() + "\n" for k, v in views.items())
-        _atomic_write(self.views_path, VIEWS_HEADER + body)
+        atomic_write(self.views_path, VIEWS_HEADER + body)
 
     def sync_views(self, view_names: list[str]) -> None:
         """Add new views (empty description), drop views no longer in RPA_VIEWS."""
@@ -166,12 +152,12 @@ class KnowledgeBase:
         if not path.exists():
             with self.lock(path):
                 if not path.exists():
-                    _atomic_write(path, ParamKnowledge(name=name).render())
+                    atomic_write(path, ParamKnowledge(name=name).render())
 
     def save_param(self, pk: ParamKnowledge) -> None:
         path = self.param_path(pk.name)
         with self.lock(path):
-            _atomic_write(path, pk.render())
+            atomic_write(path, pk.render())
 
     def update_param(self, name: str, mutate) -> ParamKnowledge | None:
         """Read-modify-write under the file lock. `mutate(pk) -> bool changed`."""
@@ -180,7 +166,7 @@ class KnowledgeBase:
             text = path.read_text(encoding="utf-8") if path.exists() else ""
             pk = _parse_param(name, text)
             if mutate(pk):
-                _atomic_write(path, pk.render())
+                atomic_write(path, pk.render())
                 return pk
         return None
 

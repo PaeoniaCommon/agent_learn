@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from conftest import ScriptedLLM, resume, run
+from rpa_fakes import ScriptedLLM, resume, run
 
 from rpa_agent import make_input
 

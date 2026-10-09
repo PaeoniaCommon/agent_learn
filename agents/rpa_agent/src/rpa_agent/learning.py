@@ -20,11 +20,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from agent_core.dates import infer_formats, looks_like_date_param
+
 from . import prompts
 from .backend import Backend
 from .config import Settings
-from .dates import infer_formats, looks_like_date_param
 from .knowledge import KnowledgeBase, ParamKnowledge
+from .validation import mentioned_params
 
 log = logging.getLogger(__name__)
 
@@ -104,8 +106,11 @@ class EventLog:
                              "rejected": r.get("rejected_views")})
             elif kind == "param" and (r.get("param") == name or
                                       (r["kind"] == "fetch_error" and name in (r.get("params") or {}))):
-                recs.append({k: r.get(k) for k in ("kind", "original_value", "final_value", "error_message")
-                             if r.get(k) is not None} | ({"value": r["params"][name]} if r["kind"] == "fetch_error" else {}))
+                rec = {k: r.get(k) for k in ("kind", "original_value", "final_value", "error_message")
+                       if r.get(k) is not None}
+                if r["kind"] == "fetch_error":
+                    rec["value"] = r["params"][name]
+                recs.append(rec)
         return recs[-n:]
 
     def conflict_count(self, target: tuple[str, str]) -> int:
@@ -238,8 +243,7 @@ class LearningWorker:
 
         elif ev.kind == "fetch_error" and ev.error_message:
             msg = ev.error_message
-            mentioned = [p for p in ev.params if re.search(rf"(?<![A-Za-z0-9_]){re.escape(p)}(?![A-Za-z0-9_])", msg, re.I)]
-            for p in mentioned:
+            for p in mentioned_params(msg, ev.params):
                 if self._is_enum(p):
                     continue
                 pk = self.kb.param(p)

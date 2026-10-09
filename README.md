@@ -1,63 +1,77 @@
-# rpa_agent
+# agent_learn
 
-A LangGraph agent that picks the right RPA view, builds a validated parameter dict, calls
-`get_data(view, param_dict)`, stores the resulting DataFrame in memory, and returns a short summary.
-It learns lean view and parameter notes in Markdown files in the background. Full design: [SPEC.md](SPEC.md).
+A home for LangGraph agents that share one set of building blocks. Each agent is its own
+installable package with its own spec, config, tests and examples. Code that more than one agent
+needs lives in `libs/`.
 
-## Install
+```
+agent_learn/
+├── pyproject.toml            # workspace root: members, shared pytest + ruff config
+├── libs/
+│   └── agent_core/           # shared building blocks (package: agent_core)
+│       ├── src/agent_core/
+│       │   ├── config.py     # load_yaml (${ENV} expansion), LLMSettings, DateSettings
+│       │   ├── llm.py        # StructuredLLM protocol + ChatOpenAI factory (internal calls tagged)
+│       │   ├── streaming.py  # TextStreamModel: stream code-built text in "messages" mode
+│       │   ├── graph.py      # make_input / is_waiting (chat-loop resume), progress events
+│       │   ├── dates.py      # deterministic date resolution + formats (no LLM)
+│       │   ├── files.py      # atomic writes + cross-process file locks
+│       │   └── text.py       # name normalisation / tokenising
+│       └── tests/
+└── agents/
+    └── rpa_agent/            # RPA view + parameter selection agent (package: rpa_agent)
+        ├── SPEC.md           # design spec
+        ├── README.md         # usage + chat-UI integration
+        ├── config.example.yaml
+        ├── src/rpa_agent/
+        ├── tests/
+        └── examples/         # stand-in backend + terminal chat loop
+```
+
+## Agents
+
+| Agent | What it does | Docs |
+|---|---|---|
+| `rpa_agent` | Picks an RPA view and validated params, fetches data into an in-memory store, learns view/param notes | [README](agents/rpa_agent/README.md) · [SPEC](agents/rpa_agent/SPEC.md) |
+
+## Setup
+
+With [uv](https://docs.astral.sh/uv/), from the repo root:
 
 ```bash
-pip install -e ".[test]"
-cp config.example.yaml config.yaml   # set llm.api_key / base_url / model and backend.module
+uv sync --all-packages --extra test
 ```
 
-`backend.module` must name a module that exposes `RPA_VIEWS`, `validate_view`, `get_view_params`,
-`valid_params` and `get_data`. You can also pass the functions directly:
-
-```python
-from rpa_agent import Backend, build_agent
-backend = Backend(RPA_VIEWS, validate_view, get_view_params, valid_params, get_data)
-agent = build_agent("config.yaml", backend=backend)
-```
-
-## Plugging in a create_agent-style chat UI
-
-`build_agent()` returns a compiled LangGraph graph, the same type `create_agent` returns. It uses
-the `messages` state key, `.stream()` / `.invoke()`, and `Command(resume=...)` for questions.
-
-```python
-from rpa_agent import USER_FACING_NODES, build_agent, make_input
-
-agent = build_agent("config.yaml")                 # optional: checkpointer=YourSaver()
-
-def on_user_message(thread_id: str, user_text: str):
-    config = {"configurable": {"thread_id": thread_id}}
-    inputs = make_input(agent, config, user_text)  # resumes a pending question, or starts a request
-    for msg, meta in agent.stream(inputs, config, stream_mode="messages"):
-        if meta.get("langgraph_node") in USER_FACING_NODES:
-            ui.stream_assistant(msg.content)       # questions and the final reply, streamed
-```
-
-- **Questions:** when the agent asks something, the question is streamed like any reply and the
-  run pauses. The user's next message, passed through `make_input`, answers it.
-- **Pause details:** the structured payload (options, proposed value, format hint) is available
-  under `"__interrupt__"` in `stream_mode="updates"` if you want buttons.
-- **Progress:** `stream_mode="custom"` yields events such as `{"stage": "fetching", ...}`.
-- **Retrieved data:** use `agent.data_store.get(dataset_id)` for the DataFrame and
-  `agent.data_store.meta(dataset_id)` for its view, params and UTC time. `rpa_agent.get_data_store()`
-  returns the same store.
-- **Shutdown:** call `agent.learning.shutdown(wait=True)` so background learning can finish.
-
-Try it locally with the stand-in backend: `OPENAI_API_KEY=... python -m examples.chat config.yaml`.
-
-### Giving a view or params explicitly (validated in code, no LLM)
-
-- **In the message:** `view: sales_daily @region=UK @date_from="last month"`, or
-  `params: {"region": "UK"}`.
-- **As state keys:** `{"messages": [...], "requested_view": "sales_daily", "requested_params": {...}}`.
-
-## Tests
+With pip:
 
 ```bash
-pytest -q
+pip install -e libs/agent_core -e "agents/rpa_agent[test]"
 ```
+
+## Tests and lint
+
+```bash
+pytest            # every package's tests, from the repo root
+ruff check .
+```
+
+You can also run `pytest` inside a single package folder to test only that package.
+
+## Adding an agent
+
+1. Create `agents/<name>/` with the same layout as `rpa_agent`:
+   - `pyproject.toml` that depends on `agent-core` (with `[tool.uv.sources] agent-core = { workspace = true }`)
+   - `src/<name>/`, `tests/`, `SPEC.md`, `README.md`, `config.example.yaml`
+2. Use `agent_core` instead of copying code:
+   - `load_yaml` for config
+   - `OpenAIStructuredLLM` for LLM calls
+   - `TextStreamModel` / `stream_text` for user-facing text
+   - `make_input` for chat-loop resume
+3. Keep the interface the same as `create_agent`, so any chat UI can drive any agent the same way:
+   - expose `build_agent(config, ...)`, which returns a compiled LangGraph graph with a `messages` state key
+   - export `USER_FACING_NODES` (the nodes whose streamed text the UI should show)
+4. Name the shared test helpers module uniquely (e.g. `tests/<name>_fakes.py`), because pytest
+   imports every package's tests in one run. Add the package's `src` and `tests` folders to
+   `pythonpath` in the root `pyproject.toml`.
+5. Add a row to the table above.
+6. Promote code to `libs/agent_core` only when a second agent needs it.

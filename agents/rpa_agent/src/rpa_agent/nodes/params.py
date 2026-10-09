@@ -9,11 +9,14 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
 
-from .. import dates, prompts
-from ..deps import Deps, progress
+from agent_core import dates
+from agent_core.graph import progress
+from agent_core.streaming import stream_text
+
+from .. import prompts
+from ..deps import Deps
 from ..learning import LearningEvent
 from ..state import decision
-from ..streaming import stream_text
 from ..validation import match_name
 from .common import YES, answer_text, check_param_value, human_date_format
 
@@ -179,7 +182,8 @@ def _ask_llm(state, ctx: _ParamCtx, params, failing, unmapped, missing) -> promp
         lines.append(line)
     knowledge = ctx.deps.kb.params_prompt(ctx.accepted)
     spans = state.get("date_spans") or []
-    failing_lines = [f"- {p}: user gave {json.dumps(f['value'], default=str)} — {f['reason']}" for p, f in failing.items()]
+    failing_lines = [f"- {p}: user gave {json.dumps(f['value'], default=str)} — {f['reason']}"
+                     for p, f in failing.items()]
     failing_lines += [f"- {p}: missing (mandatory)" for p in missing if p not in failing]
     last = state.get("last_request")
     user = prompts.PARAM_USER.format(

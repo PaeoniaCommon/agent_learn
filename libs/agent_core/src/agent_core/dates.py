@@ -18,7 +18,7 @@ from typing import Callable
 from dateutil.relativedelta import relativedelta
 
 from .config import DateSettings
-from .validation import tokens
+from .text import tokens
 
 # --------------------------------------------------------------------------- helpers
 
@@ -272,10 +272,11 @@ _SCAN_MONTH = re.compile(rf"\b(?!may\b|march\b)({MONTH})\b", re.I)
 _POINT_ALT = "|".join(f"(?:{rx})" for n, rx, _, _ in _POINTS
                       if n not in ("ctx_month", "ctx_year"))
 _POINT_ALT = re.sub(r"\((?!\?)", "(?:", _POINT_ALT)  # make inner groups non-capturing
-_EDGE = re.compile(rf"\b(start|beginning|end)\s+of\s+(?:the\s+)?(.+)$", re.I)
+_EDGE = re.compile(r"\b(start|beginning|end)\s+of\s+(?:the\s+)?(.+)$", re.I)
 _EDGE_SCAN = re.compile(rf"\b(?:start|beginning|end)\s+of\s+(?:the\s+)?(?:{_POINT_ALT})", re.I)
 _RANGES = [
-    re.compile(rf"\b(?:from|between)\s+((?:{_POINT_ALT}))\s+(?:to|and|until|till|through|-|–)\s+((?:{_POINT_ALT}))", re.I),
+    re.compile(rf"\b(?:from|between)\s+((?:{_POINT_ALT}))\s+(?:to|and|until|till|through|-|–)\s+"
+               rf"((?:{_POINT_ALT}))", re.I),
     re.compile(rf"((?:{_POINT_ALT}))\s+(?:-|–|to|until|till|through)\s+((?:{_POINT_ALT}))", re.I),
 ]
 _SINCE = re.compile(rf"\bsince\s+((?:{_POINT_ALT}))", re.I)

@@ -2,7 +2,7 @@
 
 from .backend import Backend
 from .config import Settings, load_config
-from .data_store import DataStore, DatasetRecord, get_data_store
+from .data_store import DatasetRecord, DataStore, get_data_store
 from .graph import USER_FACING_NODES, build_agent, make_input
 from .learning import LearningEvent
 

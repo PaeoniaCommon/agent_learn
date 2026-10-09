@@ -6,7 +6,8 @@ from typing import Any
 
 from langchain_core.messages import BaseMessage
 
-from .. import dates
+from agent_core import dates
+
 from ..validation import ValueCheck, check_value
 
 YES = {"y", "yes", "ok", "okay", "accept", "correct", "right", "yep", "yeah", "sure", "confirm", "confirmed"}
@@ -55,7 +56,8 @@ def check_param_value(
         if span is not None:
             v = dates.span_value(span, role, date_fmt)
             if v is None:
-                return ValueCheck(False, reason=f'"{sval}" covers {span.start} to {span.end}; which single date do you mean?')
+                reason = f'"{sval}" covers {span.start} to {span.end}; which single date do you mean?'
+                return ValueCheck(False, reason=reason)
             res = check_value(v, [], pattern)
             if res.ok and v != sval:
                 res.changed = True

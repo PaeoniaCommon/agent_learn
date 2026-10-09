@@ -555,36 +555,43 @@ When `make_input` resumes an interrupt, it also appends the user's reply to `mes
 
 ## 12. Project layout
 
+The agent lives in the `agent_learn` workspace, at `agents/rpa_agent/`. Pieces that other agents can reuse are in `libs/agent_core/`.
+
 ```
-rpa_agent/
-  __init__.py          # build_agent, make_input, get_data_store, USER_FACING_NODES
-  config.py            # YAML + env expansion → pydantic Settings
-  llm.py               # ChatOpenAI factory
-  backend.py           # adapter over RPA_VIEWS / validate_view / get_view_params / valid_params / get_data
-  state.py             # RPAState, ParamDecision
-  graph.py             # StateGraph wiring
-  deps.py              # Deps container passed to nodes; progress() stream helper
-  nodes/ingest.py      # ingest + explicit-syntax parser
-  nodes/view.py        # resolve_view, ask_view, confirm_view
-  nodes/params.py      # resolve_params, ask_param, confirm_param, finalize_params
-  nodes/fetch.py       # fetch + error classification
-  nodes/respond.py     # templated reply rendering
-  nodes/common.py      # shared value checking (incl. date resolution)
-  validation.py        # deterministic matching/normalisation/validation
+libs/agent_core/src/agent_core/
+  config.py            # load_yaml (${ENV} expansion), LLMSettings, DateSettings
+  llm.py               # StructuredLLM protocol + ChatOpenAI factory (internal calls tagged)
+  streaming.py         # TextStreamModel / stream_text
+  graph.py             # make_input, is_waiting, progress
   dates.py             # relative/explicit date resolution + formatting (no LLM)
-  streaming.py         # TextStreamModel
-  knowledge.py         # md read/write/parse, view-list sync
-  learning.py          # LearningEvent, LearningWorker, learner prompts
-  data_store.py
-  prompts.py
-config.example.yaml
-examples/fake_rpa.py   # stand-in backend module for local runs
-examples/chat.py       # terminal chat loop using make_input + USER_FACING_NODES
-knowledge/             # created on first run
-tests/
+  files.py             # atomic_write, lock_for
+  text.py              # norm, tokens
+
+agents/rpa_agent/
+  SPEC.md  README.md  config.example.yaml  pyproject.toml
+  src/rpa_agent/
+    __init__.py        # build_agent, make_input, get_data_store, USER_FACING_NODES
+    config.py          # RPA settings (built on agent_core.config)
+    backend.py         # adapter over RPA_VIEWS / validate_view / get_view_params / valid_params / get_data
+    state.py           # RPAState, ParamDecision
+    graph.py           # StateGraph wiring, build_agent
+    deps.py            # Deps container passed to nodes
+    nodes/ingest.py    # ingest + explicit-syntax parser
+    nodes/view.py      # resolve_view, ask_view, confirm_view
+    nodes/params.py    # resolve_params, ask_param, confirm_param, finalize_params
+    nodes/fetch.py     # fetch + error classification
+    nodes/respond.py   # templated reply rendering
+    nodes/common.py    # shared value checking (incl. date resolution)
+    validation.py      # deterministic matching/validation
+    knowledge.py       # md read/write/parse, view-list sync
+    learning.py        # LearningEvent, LearningWorker (gate + LLM learning)
+    data_store.py
+    prompts.py
+  tests/               # rpa_fakes.py (fake backend + scripted LLM), test_agent.py, test_units.py
+  examples/            # fake_rpa.py (stand-in backend), chat.py (terminal chat loop)
 ```
 
-Dependencies: `langgraph`, `langchain-core`, `langchain-openai`, `pydantic>=2`, `pandas`, `pyyaml`, `filelock`. Optionally `rank_bm25` for shortlisting.
+Dependencies: `langgraph`, `langchain-core`, `langchain-openai`, `pydantic>=2`, `pandas`, `python-dateutil`, `pyyaml`, `filelock`. Optionally `rank_bm25` for shortlisting.
 
 ---
 
