@@ -7,7 +7,7 @@ from typing import Protocol, TypeVar
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
-from .config import LLMSettings
+from ..config import LLMSettings
 
 T = TypeVar("T", bound=BaseModel)
 

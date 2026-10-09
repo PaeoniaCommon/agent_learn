@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from ...llm.streaming import stream_text
 from ..deps import Deps
-from ..streaming import stream_text
 from .common import human_date_format
 
 _VIEW_SOURCE = {

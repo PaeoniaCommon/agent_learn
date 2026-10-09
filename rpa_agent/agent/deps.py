@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Callable
 
-from .backend import Backend
-from .config import Settings
-from .data_store import DataStore
-from .dates import today_in
-from .knowledge import KnowledgeBase
-from .learning import LearningWorker
-from .streaming import TextStreamModel
+from ..config import Settings
+from ..data.backend import Backend
+from ..data.store import DataStore
+from ..knowledge.learning import LearningWorker
+from ..knowledge.store import KnowledgeBase
+from ..llm.streaming import TextStreamModel
+from ..validation.dates import today_in
 
 
 @dataclass

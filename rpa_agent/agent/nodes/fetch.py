@@ -6,8 +6,8 @@ import logging
 import re
 from datetime import datetime, timezone
 
+from ...knowledge.learning import LearningEvent
 from ..deps import Deps, progress
-from ..learning import LearningEvent
 
 log = logging.getLogger(__name__)
 

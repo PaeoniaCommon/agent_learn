@@ -8,11 +8,11 @@ import re
 from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
 
-from .. import prompts
+from ...knowledge.learning import LearningEvent
+from ...llm import prompts
+from ...llm.streaming import stream_text
+from ...validation.values import match_name
 from ..deps import Deps, progress
-from ..learning import LearningEvent
-from ..streaming import stream_text
-from ..validation import match_name
 from .common import answer_text
 
 

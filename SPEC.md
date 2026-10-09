@@ -555,32 +555,39 @@ When `make_input` resumes an interrupt, it also appends the user's reply to `mes
 
 ## 12. Project layout
 
+The `rpa_agent` package is grouped into building blocks. The public API (`from rpa_agent import build_agent, make_input, USER_FACING_NODES, ...`) is re-exported from the package root.
+
 ```
 rpa_agent/
-  __init__.py          # build_agent, make_input, get_data_store, USER_FACING_NODES
-  config.py            # YAML + env expansion → pydantic Settings
-  llm.py               # ChatOpenAI factory
-  backend.py           # adapter over RPA_VIEWS / validate_view / get_view_params / valid_params / get_data
-  state.py             # RPAState, ParamDecision
-  graph.py             # StateGraph wiring
-  deps.py              # Deps container passed to nodes; progress() stream helper
-  nodes/ingest.py      # ingest + explicit-syntax parser
-  nodes/view.py        # resolve_view, ask_view, confirm_view
-  nodes/params.py      # resolve_params, ask_param, confirm_param, finalize_params
-  nodes/fetch.py       # fetch + error classification
-  nodes/respond.py     # templated reply rendering
-  nodes/common.py      # shared value checking (incl. date resolution)
-  validation.py        # deterministic matching/normalisation/validation
-  dates.py             # relative/explicit date resolution + formatting (no LLM)
-  streaming.py         # TextStreamModel
-  knowledge.py         # md read/write/parse, view-list sync
-  learning.py          # LearningEvent, LearningWorker, learner prompts
-  data_store.py
-  prompts.py
+  __init__.py            # public API: build_agent, make_input, USER_FACING_NODES, Backend, DataStore, ...
+  config.py              # YAML + env expansion → pydantic Settings
+  agent/                 # the LangGraph agent
+    graph.py             #   StateGraph wiring, build_agent, make_input
+    state.py             #   RPAState, ParamDecision
+    deps.py              #   Deps container passed to nodes; progress() stream helper
+    nodes/
+      ingest.py          #   ingest + explicit-syntax parser
+      view.py            #   resolve_view, ask_view, confirm_view
+      params.py          #   resolve_params, ask_param, confirm_param, finalize_params
+      fetch.py           #   fetch + error classification
+      respond.py         #   templated reply rendering
+      common.py          #   shared value checking (incl. date resolution)
+  data/                  # data access
+    backend.py           #   adapter over RPA_VIEWS / validate_view / get_view_params / valid_params / get_data
+    store.py             #   in-memory DataFrame store (DataStore, DatasetRecord)
+  knowledge/             # learning
+    store.py             #   views.md / params/*.md read/write/parse, view-list sync
+    learning.py          #   LearningEvent, LearningWorker (gate + LLM learning)
+  llm/                   # LLM access
+    client.py            #   ChatOpenAI factory (StructuredLLM)
+    prompts.py           #   structured-output schemas + prompts
+    streaming.py         #   TextStreamModel
+  validation/            # deterministic checks (no LLM)
+    values.py            #   name matching, value validation
+    dates.py             #   relative/explicit date resolution + formatting
 config.example.yaml
-examples/fake_rpa.py   # stand-in backend module for local runs
-examples/chat.py       # terminal chat loop using make_input + USER_FACING_NODES
-knowledge/             # created on first run
+examples/                # fake_rpa.py (stand-in backend), chat.py (terminal chat loop)
+knowledge/               # created on first run
 tests/
 ```
 

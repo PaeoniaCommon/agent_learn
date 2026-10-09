@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 import pytest
-
-from rpa_agent.config import DateSettings, Settings
-from rpa_agent.dates import infer_formats, resolve, resolve_value
-from rpa_agent.knowledge import KnowledgeBase
-from rpa_agent.learning import LearningEvent, LearningWorker
-from rpa_agent.nodes.ingest import parse_explicit
-from rpa_agent.validation import check_value, match_name
-
 from conftest import TODAY, FakeBackend, ScriptedLLM
+
+from rpa_agent.agent.nodes.ingest import parse_explicit
+from rpa_agent.config import DateSettings, Settings
+from rpa_agent.knowledge.learning import LearningEvent, LearningWorker
+from rpa_agent.knowledge.store import KnowledgeBase
+from rpa_agent.validation.dates import infer_formats, resolve, resolve_value
+from rpa_agent.validation.values import check_value, match_name
 
 CFG = DateSettings(fiscal_year_start_month=4, day_first=True)
 
