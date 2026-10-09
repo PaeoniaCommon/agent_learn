@@ -30,10 +30,10 @@ Guiding principles:
 | `RPA_VIEWS` | `list[str]` | Canonical view names. |
 | `validate_view` | `(view: str) -> bool` | Authoritative check that a view exists. |
 | `get_view_params` | `(view: str) -> {"mandatory": list[str], "optional": list[str], "default": dict[str, Any]}` | Params are identified by **name** only. The same names are the keys of the dict passed to `get_data`. |
-| `valid_params` | `(param: str, value) -> list` | Allowed values for the param. `[]` means the param has no fixed list. It does not depend on the view. |
+| `valid_params` | `(param: str) -> list` | Allowed values for the param. `[]` means the param has no fixed list. It does not depend on the view. |
 | `get_data` | `(view: str, param_dict: dict) -> pandas.DataFrame` | Raises an exception on error. |
 
-**All of these are reached through a single adapter module (`rpa_agent/backend.py`).** No other module imports them directly. If the real signatures turn out to be different, only the adapter changes. The adapter exposes `allowed_values(param) -> list` and `is_valid(param, value) -> bool` on top of `valid_params`, and caches results in memory with a configurable TTL. **Parameter behaviour does not depend on the view.** A param's allowed values, format rules and learned knowledge are the same in every view that uses it. A view only decides *which* params are mandatory, optional or defaulted.
+**All of these are reached through a single adapter module (`rpa_agent/backend.py`).** No other module imports them directly. If the real signatures turn out to be different, only the adapter changes. The adapter caches `valid_params` results per param in memory, with a configurable TTL. The membership check (value in list, case-insensitive, canonical spelling returned) is done in our code by `validation.py`. **Parameter behaviour does not depend on the view.** A param's allowed values, format rules and learned knowledge are the same in every view that uses it. A view only decides *which* params are mandatory, optional or defaulted.
 
 ---
 
@@ -187,7 +187,7 @@ class RPAState(TypedDict, total=False):
    - Map each key to a param name. Try, in order: exact name; case-insensitive name (ignoring `_`, `-` and spaces); fuzzy match (single match only). If a key cannot be mapped, mark it **unmapped**.
    - A key that maps to a param this view does not accept is **not accepted by this view**. It is dropped, and the response says so.
    - Check the value:
-     - If the param has a fixed list of allowed values, the value must be in it (checked with `valid_params`). Matching is case-insensitive; if a case variant matches, store the canonical spelling and set `source="user_corrected"`.
+     - If the param has a fixed list of allowed values, the value must be in it (the list from `valid_params`). Matching is case-insensitive; if a case variant matches, store the canonical spelling and set `source="user_corrected"`.
      - If the knowledge file has a learned `pattern` (regex), the value must match it.
      - Otherwise the value is **accepted as given**. When no rule exists, we trust the user.
 4. **LLM pass.** This runs only if something is missing, invalid or unmapped, or if the free text implies parameter values.
@@ -531,7 +531,7 @@ Dependencies: `langgraph`, `langchain-core`, `langchain-openai`, `pydantic>=2`, 
 - M1: When the user gives a valid explicit view, it is used without calling the LLM.
 - M2: When the user gives an invalid view, the LLM chooses one and the response states the change.
 - M3: When several views are plausible, the agent interrupts and asks. The confirmation is recorded as a learning event.
-- M4: The final param dict contains every mandatory param, uses only params the view accepts, and has every value passing `valid_params` where the param has a fixed list.
+- M4: The final param dict contains every mandatory param, uses only params the view accepts, and has every value inside the `valid_params` list wherever that list is non-empty.
 - M5: Explicit params are validated in code. Only failures go to the LLM. Every correction is shown to the user with its source and reason.
 - M6: Each uncertain param causes its own interrupt.
 - M7: `get_data` is called only with a dict that passed validation. A successful df is stored in memory with a dataset id, the view, the params and the UTC time. The user receives the id, columns, a sample row and the shape, never the df.
@@ -576,7 +576,6 @@ Test cases:
 
 ## 15. Open questions
 
-1. **`valid_params(param, value)` return value.** The spec assumes it returns the param's allowed values (`[]` = no fixed list), so the agent can both check a value and offer options. If it returns a bool instead, the adapter needs another way to list options for the LLM and for confirmation questions, or the options are simply left out.
-2. **Dates and relative values.** Should phrases like "last month" be resolved by the LLM, which needs today's date in the prompt (planned), or by deterministic helpers?
-3. **Multi-user knowledge.** Is the knowledge directory shared between users? If so, should learning from one user's confirmations affect everyone? The design assumes yes, shared.
-4. **Should `respond` also stream tokens?** The current design emits the final message in one piece. If the UI expects token streaming, enable C3.
+1. **Dates and relative values.** Should phrases like "last month" be resolved by the LLM, which needs today's date in the prompt (planned), or by deterministic helpers?
+2. **Multi-user knowledge.** Is the knowledge directory shared between users? If so, should learning from one user's confirmations affect everyone? The design assumes yes, shared.
+3. **Should `respond` also stream tokens?** The current design emits the final message in one piece. If the UI expects token streaming, enable C3.
