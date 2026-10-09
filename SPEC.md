@@ -563,7 +563,13 @@ rpa_agent/
   backend.py           # adapter over RPA_VIEWS / validate_view / get_view_params / valid_params / get_data
   state.py             # RPAState, ParamDecision
   graph.py             # StateGraph wiring
-  nodes/{ingest,view,params,ask,confirm,fetch,respond}.py
+  deps.py              # Deps container passed to nodes; progress() stream helper
+  nodes/ingest.py      # ingest + explicit-syntax parser
+  nodes/view.py        # resolve_view, ask_view, confirm_view
+  nodes/params.py      # resolve_params, ask_param, confirm_param, finalize_params
+  nodes/fetch.py       # fetch + error classification
+  nodes/respond.py     # templated reply rendering
+  nodes/common.py      # shared value checking (incl. date resolution)
   validation.py        # deterministic matching/normalisation/validation
   dates.py             # relative/explicit date resolution + formatting (no LLM)
   streaming.py         # TextStreamModel
@@ -572,6 +578,8 @@ rpa_agent/
   data_store.py
   prompts.py
 config.example.yaml
+examples/fake_rpa.py   # stand-in backend module for local runs
+examples/chat.py       # terminal chat loop using make_input + USER_FACING_NODES
 knowledge/             # created on first run
 tests/
 ```

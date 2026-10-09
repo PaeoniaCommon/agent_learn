@@ -1,0 +1,41 @@
+# Copy to config.yaml. ${VAR} and ${VAR:-default} are expanded from the environment.
+llm:
+  model: gpt-4o-mini
+  api_key: ${OPENAI_API_KEY}
+  base_url: ${OPENAI_BASE_URL:-https://api.openai.com/v1}   # any OpenAI-compatible endpoint
+  temperature: 0
+  timeout_s: 60
+  max_retries: 2
+  structured_output_method: json_schema    # json_schema | function_calling | json_mode
+# learning_llm:                            # optional; unset fields inherit from `llm`
+#   model: gpt-4o-mini
+backend:
+  module: examples.fake_rpa                # module exposing RPA_VIEWS, validate_view, get_view_params, valid_params, get_data
+paths:
+  knowledge_dir: ./knowledge
+agent:
+  view_shortlist_max: 40
+  fuzzy_match_cutoff: 0.92
+  max_param_reasks: 2
+  max_view_reasks: 2
+  sample_value_max_chars: 60
+  max_columns_listed: 30
+learning:
+  enabled: true
+  view_desc_max_chars: 200
+  param_desc_max_chars: 150
+  param_format_max_chars: 250
+  max_examples: 3
+  debounce_s: 2
+  conflict_threshold: 2
+data_store:
+  max_entries: 50
+dates:
+  timezone: Europe/London
+  day_first: true
+  week_start: monday
+  fiscal_year_start_month: 4
+  default_date_format: "%Y-%m-%d"
+respond:
+  stream_chunk_chars: 16
+  respond_with_llm: false
