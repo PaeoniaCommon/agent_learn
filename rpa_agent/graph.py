@@ -6,11 +6,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Callable
 
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
-
-from agent_core.graph import make_input  # noqa: F401  (re-exported)
-from agent_core.llm import OpenAIStructuredLLM
-from agent_core.streaming import TextStreamModel
+from langgraph.types import Command
 
 from . import nodes
 from .backend import Backend
@@ -19,7 +17,9 @@ from .data_store import DataStore, get_data_store
 from .deps import Deps
 from .knowledge import KnowledgeBase
 from .learning import LearningWorker
+from .llm import OpenAIStructuredLLM
 from .state import RPAState
+from .streaming import TextStreamModel
 
 USER_FACING_NODES = frozenset({"ask_view", "ask_param", "respond"})
 
@@ -92,3 +92,14 @@ def build_agent(
     agent.deps = deps
     return agent
 
+
+def make_input(agent, config: dict, user_text: str):
+    """Command(resume=...) if the thread is waiting on a question, else a new request."""
+    try:
+        snapshot = agent.get_state(config)
+        waiting = bool(snapshot.interrupts) or any(t.interrupts for t in snapshot.tasks)
+    except Exception:
+        waiting = False
+    if waiting:
+        return Command(resume=user_text)
+    return {"messages": [HumanMessage(content=user_text)]}

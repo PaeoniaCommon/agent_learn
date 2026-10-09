@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 
-from agent_core.graph import progress
-
-from ..deps import Deps
+from ..deps import Deps, progress
 from ..learning import LearningEvent
-from ..validation import mentioned_params
 
 log = logging.getLogger(__name__)
+
+
+def mentioned_params(message: str, params: dict) -> list[str]:
+    return [p for p in params
+            if re.search(rf"(?<![A-Za-z0-9_]){re.escape(p)}(?![A-Za-z0-9_])", message, re.I)]
 
 
 def classify_error(exc: BaseException, params: dict) -> tuple[str, list[str]]:

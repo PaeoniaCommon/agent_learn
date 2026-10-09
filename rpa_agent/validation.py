@@ -7,7 +7,10 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from agent_core.text import norm, tokens  # noqa: F401  (tokens re-exported)
+
+def norm(s: Any) -> str:
+    """Case-fold and drop separators: 'Sales Daily' == 'sales_daily' == 'sales-daily'."""
+    return re.sub(r"[\s_\-.]+", "", str(s).strip().casefold())
 
 
 def match_name(candidate: str, names: Iterable[str], cutoff: float) -> tuple[str | None, bool]:
@@ -36,12 +39,6 @@ def match_name(candidate: str, names: Iterable[str], cutoff: float) -> tuple[str
         if r0 - r1 >= 0.05:
             return by_norm[close[0]], True
     return None, False
-
-
-def mentioned_params(message: str, params) -> list[str]:
-    """Params whose names appear as whole words in a (backend error) message."""
-    return [p for p in params
-            if re.search(rf"(?<![A-Za-z0-9_]){re.escape(p)}(?![A-Za-z0-9_])", message, re.I)]
 
 
 @dataclass
@@ -75,3 +72,8 @@ def check_value(value: Any, allowed: list, pattern: str | None = None) -> ValueC
             pass  # a broken learned pattern must never block a request
     return ValueCheck(True, value)
 
+
+def tokens(name: str) -> list[str]:
+    """Split a param name into lowercase tokens: 'dateFrom' / 'date_from' -> ['date', 'from']."""
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", name)
+    return [t for t in re.split(r"[^A-Za-z0-9]+", s.lower()) if t]

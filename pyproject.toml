@@ -1,26 +1,29 @@
-# Repo root: a workspace of independent agent packages plus shared libraries.
-# Each member has its own pyproject.toml; this file only ties them together.
-
-[tool.uv.workspace]
-members = ["libs/*", "agents/*"]
-
-[tool.pytest.ini_options]
-# Run every package's tests from the root: `pytest`
-addopts = "--import-mode=importlib"
-testpaths = ["libs", "agents"]
-pythonpath = [
-    "libs/agent_core/src",
-    "agents/rpa_agent/src",
-    "agents/rpa_agent/tests",
-    "agents/rpa_agent",
+[project]
+name = "rpa-agent"
+version = "0.1.0"
+description = "LangGraph agent that selects an RPA view and its parameters, fetches data, and learns over time"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.0",
+    "langchain-core>=1.0",
+    "langchain-openai>=1.0",
+    "pydantic>=2",
+    "pandas",
+    "python-dateutil",
+    "pyyaml",
+    "filelock",
 ]
 
-[tool.ruff]
-line-length = 120
-target-version = "py311"
+[project.optional-dependencies]
+test = ["pytest"]
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
-[tool.ruff.lint.isort]
-known-first-party = ["agent_core", "rpa_agent"]
+[tool.setuptools.packages.find]
+include = ["rpa_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
