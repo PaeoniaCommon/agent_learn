@@ -3,4 +3,4 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 config.yaml
-**/knowledge/_locks/
+knowledge/_locks/
